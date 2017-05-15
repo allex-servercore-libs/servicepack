@@ -1,0 +1,26 @@
+{
+  "name": "allex_servicepackservercorelib",
+  "version": "1.0.0",
+  "description": "AllexJS ServicePack lib",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allex-servercore-libs/servicepack.git"
+  },
+  "keywords": [
+    "ecosystem:AllexJS",
+    "ServicePack",
+    "server",
+    "core",
+    "lib"
+  ],
+  "author": "Andrija Petrovic <andrija.hers@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/allex-servercore-libs/servicepack/issues"
+  },
+  "homepage": "https://github.com/allex-servercore-libs/servicepack#readme"
+}
