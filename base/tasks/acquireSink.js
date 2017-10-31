@@ -81,24 +81,26 @@ function createAcquireSinkTask(execlib){
     }
   };
   AcquireSinkTask.prototype.onSpawnError = function(reason){
+    var wasconnected;
     if(this.connected===null){
       return;
     }
-    var wasconnected = this.connected;
+    this.log('Spawn Error',reason.toString(),'was connected',wasconnected);
+    wasconnected = this.connected;
     this.connected = false;
     if(wasconnected){
       if(this.onConnectionLost){
         this.onConnectionLost(reason);
-        return;
+        //return;
       }
     }else{
       if(this.onCannotConnect){
         this.onCannotConnect(reason);
-        return;
+        //return;
       }
     }
     //this.log('Spawn Error',reason,'was connected',wasconnected,this);
-    this.log('Spawn Error',reason.toString(),'was connected',wasconnected);
+    /*
     switch(reason.code){
       case 'NO_SERVER':
         lib.runNext(this.go.bind(this),1000);
@@ -110,6 +112,8 @@ function createAcquireSinkTask(execlib){
         this.handleError(reason);
         break;
     }
+    */
+    lib.runNext(this.go.bind(this),1000);
   };
   AcquireSinkTask.prototype.onSinkDown = function(reason){
     this.connected = false;
