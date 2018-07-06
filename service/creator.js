@@ -90,8 +90,9 @@ function createService(execlib){
   */
   Service.prototype.userFactory = new lib.Map();
   Service.prototype.killAllUsers = function(){
-    var modulename = this.modulename;
-    this.users.destroyDestroyables();
+    if (this.users) {
+      this.users.destroyDestroyables();
+    }
   };
   Service.prototype.close = function(){
     this.destroy();
