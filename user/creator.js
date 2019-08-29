@@ -143,7 +143,7 @@ function createUserSuite(lib, UserEntity, UserSession, Collection){
       return;
     }
     sessitem = this.sessions.push(session);
-    session.aboutToDie.attachForSingleShot(this.onSessionDown.bind(this,sessitem));
+    session.destroyed.attachForSingleShot(this.onSessionDown.bind(this,sessitem));
     c = session.channels.get('s');
     //console.log(this.get('name'),'got',this.sessionCount,'sessions');
     var f = this.__service.roleFilters.get(this.role);
