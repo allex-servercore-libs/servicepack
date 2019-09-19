@@ -40,6 +40,7 @@ function createRealizeTcpTransmissionTask(execlib){
       c.removeAllListeners();
       c = null;
       td();
+      td = null;
     });
   };
   RealizeTcpTransmissionTask.prototype.sendFingerprint = function(socket){
@@ -52,7 +53,7 @@ function createRealizeTcpTransmissionTask(execlib){
         payload = this.getPayload();
         break;
       case 'undefined':
-        lib.runNext(this.destroy.bind(this));
+        socket.end();
         return;
       default:
         payload = this.getPayload;
@@ -72,7 +73,8 @@ function createRealizeTcpTransmissionTask(execlib){
       if (q.isPromise(payload)) {
         //console.log('blocking on promise');
         payload.done(
-          this.handlePayload.bind(this, socket)
+          this.handlePayload.bind(this, socket),
+          socket.end.bind(socket)
         );
       } else {
         //console.log('writing to socket', payload);
