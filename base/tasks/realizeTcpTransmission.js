@@ -32,7 +32,7 @@ function createRealizeTcpTransmissionTask(execlib){
   RealizeTcpTransmissionTask.prototype.go = function(){
     var c = net.createConnection(this.port,this.ipaddress),
       td = this.destroy.bind(this);
-    c.on('error',this.destroy.bind(this));
+    c.on('error',td);
     c.on('connect',this.sendFingerprint.bind(this,c));
     c.on('drain',this.deliverPayload.bind(this,c));
     c.on('data',this.onTransmissionData.bind(this,c));

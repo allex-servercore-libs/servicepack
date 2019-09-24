@@ -163,14 +163,14 @@ function createService(execlib){
         throw lib.Error('SERVICE_PROPERTYHASH_ELEMENT_ERROR', descname+' in propertyhash of '+this.modulename+' produced an error '+result.errors[0].message);
       }
     }
-  }
+  };
 
   Service.prototype.checkPropertyHashDescriptor = function (prophash) {
     if (!this.propertyHashDescriptor) {
       return;
     }
     if (!prophash) {
-      throw new lib.Error('NO_PROPERTY_HASH', this.modulename+' misses the property hash');
+      throw new lib.Error('NO_PROPERTY_HASH', this.modulename+' lacks the property hash');
     }
     var ph = prophash;
     lib.traverseShallow(this.propertyHashDescriptor, this.propertyHashChecker.bind(this, '', ph));
@@ -308,7 +308,10 @@ function createService(execlib){
   };
   function createGetter(map){
     return {
-      get:map.get.bind(map)
+      get:map.get.bind(map),
+      destroy: function () {
+        map = null;
+      }
     };
   }
   Service.inherit = function(serviceChildCtor, factoryProducer, additionalParentServices){
@@ -330,6 +333,8 @@ function createService(execlib){
       lib.traverse(factoryProducer.apply(null,getters),registerFactoryFunction.bind(null,cuf));
       cuf = null;
     }
+    lib.arryDestroyAll(getters);
+    getters = null;
     serviceChildCtor.prototype.propertyHashDescriptor = lib.extend( lib.extend({}, this.prototype.propertyHashDescriptor || {}), serviceChildCtor.prototype.propertyHashDescriptor || {});
   };
 

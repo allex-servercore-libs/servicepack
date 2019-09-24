@@ -25,12 +25,13 @@ function createUserSuite(lib, UserEntity, UserSession, Collection){
   lib.inherit(User,UserEntity);
   //User.inherit = UserEntity.inherit;
   function distinctElements(a1,a2){
-    var ret = a1.slice();
+    var ret = a1.slice(), _r = ret;
     a2.forEach(function(a2item){
-      if(ret.indexOf(a2item)<0){
-        ret.push(a2item);
+      if(_r.indexOf(a2item)<0){
+        _r.push(a2item);
       }
     });
+    _r = null;
     return ret;
   }
   function combineStateFilters(sf1,sf2){
