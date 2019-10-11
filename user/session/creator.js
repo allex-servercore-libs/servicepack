@@ -174,7 +174,7 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
   };
   UserSession.prototype.handleIncomingUnit = function(incomingunit){
     if ( !(this.user && this.user.__service) ) {
-      throw new lib.Error('ALREADY_DESTROYED', 'This instance of '+this.contructor.name+' is already destroyed');
+      throw new lib.Error('ALREADY_DESTROYED', 'This instance of '+this.constructor.name+' is already destroyed');
     }
     var il = incomingunit.length;
     if (il === 2) {

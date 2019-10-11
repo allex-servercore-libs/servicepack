@@ -1,6 +1,6 @@
 {
   "name": "allex_servicepackservercorelib",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "AllexJS ServicePack lib",
   "main": "index.js",
   "scripts": {
