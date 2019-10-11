@@ -34,7 +34,7 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
   lib.inherit(ExclusivityChannel, OOBChannel);
   ExclusivityChannel.prototype.name = 'x';
 
-  var __UserSessionCount = 0, __id=0;
+  //var __UserSessionCount = 0, __id=0;
   function UserSession(user,session,gate){
     //this.id = ++__id;
     //console.log(process.pid, 'new UserSession', this.id, ++__UserSessionCount);
@@ -70,6 +70,8 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
     if (!this.deathReported) {
       this.deathReported = true;
       this.sendOOB('-',true);
+      lib.runNext(this.destroy.bind(this));
+      return false;
     }
     return true;
   };
@@ -155,7 +157,7 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
         console.log('execing',cs,'on',clblname,'=>',clbl,Date.now());
         process.exit(0);
       }else{
-        //console.log('UserSession about to exec', cs[1], 'on', cs[0]);
+        //console.log(this.constructor.name, 'about to exec', cs[1], 'on', cs[0]);
         return clbl.exec(cs[1]);
       }
     }
@@ -172,7 +174,7 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
   };
   UserSession.prototype.handleIncomingUnit = function(incomingunit){
     if ( !(this.user && this.user.__service) ) {
-      return;
+      throw new lib.Error('ALREADY_DESTROYED', 'This instance of '+this.contructor.name+' is already destroyed');
     }
     var il = incomingunit.length;
     if (il === 2) {
