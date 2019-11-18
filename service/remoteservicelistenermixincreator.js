@@ -22,6 +22,17 @@ function createRemoteServiceListenerMixin(execlib, ServiceBase) {
     ctor.prototype.onRemoteHunted = RemoteServiceListenerServiceMixin.prototype.onRemoteHunted;
     ctor.prototype.onFindRemoteWithAddress = RemoteServiceListenerServiceMixin.prototype.onFindRemoteWithAddress;
   };
+  RemoteServiceListenerServiceMixin.checkForImplementation = function (instance) {
+    if (!instance.constructor) {
+      throw new lib.Error('REMOTE_SERVICE_LISTENER_MIXIN_NOT_CHECKED_WITH_CONSTRUCTOR', '"this" has no constructor');
+    }
+    if (!instance.constructor.name) {
+      throw new lib.Error('REMOTE_SERVICE_LISTENER_MIXIN_NOT_CHECKED_WITH_CONSTRUCTOR_NAME', '"this" has no constructor name');
+    }
+    if (!lib.isFunction(instance.findRemote)) {
+      throw new lib.Error('REMOTE_SERVICE_LISTENER_MIXIN_NOT_IMPLEMENTED', instance.constructor.name+' does not implement the RemoteServiceListenerServiceMixin');
+    }
+  };
   function nameOfServiceName (servicename) {
     if (lib.isArray(servicename)) {
       return servicename[servicename.length-1];
