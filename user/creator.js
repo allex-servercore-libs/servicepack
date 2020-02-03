@@ -1,6 +1,6 @@
 function createUserSuite(lib, UserEntity, UserSession, Collection){
   'use strict';
-  var q = lib.q, _uid = 0, sessionAcceptorFactory = require('./sessionacceptance')(lib);
+  var q = lib.q, qlib=lib.qlib, _uid = 0, sessionAcceptorFactory = require('./sessionacceptance')(lib);
   function setProp(u,prophash,propname){
     u.set(propname,prophash[propname]);
   }
@@ -95,11 +95,7 @@ function createUserSuite(lib, UserEntity, UserSession, Collection){
     if (ctor) {
       ret = this.sessionAcceptor.resolveNewSession(new ctor(this,session,gate,arg1));
       if(ret) {
-        if (q.isThenable(ret)) {
-          ret.then(this.attachSession.bind(this));
-        } else {
-          this.attachSession(ret);
-        }
+        qlib.thenAny(ret, this.attachSession.bind(this));
       } else {
         console.error('no resolved session', ret);
         ret = null;
