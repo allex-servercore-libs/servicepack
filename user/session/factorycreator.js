@@ -110,37 +110,20 @@ function createFactoryCreator(lib){
       }
     };
 
-    function HttpUserSession(user,session,gate){
+    function HttpUserSession(user,session,gate,srchannel){
       UserSessionCtor.call(this,user,session,gate);
-      this.q = new lib.Fifo();
-      this.reporter = null;
+      this.signalRchannel = srchannel;
     }
     lib.inherit(HttpUserSession,UserSessionCtor);
     HttpUserSession.prototype.__cleanUp = function(){
-      if(this.reporter){
-        this.reporter.end();
+      if (this.signalRchannel) {
+        this.signalRchannel.destroy();
       }
-      this.reporter = null;
-      this.q.destroy();
-      this.q = null;
+      this.signalRchannel = null;
       UserSessionCtor.prototype.__cleanUp.call(this);
     };
     HttpUserSession.prototype.send = function(data){
-      if(this.reporter){
-        this.reporter.write(JSON.stringify([data]));
-        this.reporter.end();
-        this.reporter = null;
-        return;
-      }
-      this.q.push(data);
-    };
-    HttpUserSession.prototype.serveRequestForIncoming = function(res){
-      if(this.q.length){
-        res.write(JSON.stringify(this.q.drain()));
-        res.end();
-      }else{
-        this.reporter = res;
-      }
+      this.signalRchannel.invokeOnClient('_', data);
     };
 
     function InProcUserSession(user,session,gate,inprocrequester){
