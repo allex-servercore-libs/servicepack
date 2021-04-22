@@ -113,17 +113,33 @@ function createFactoryCreator(lib){
     function HttpUserSession(user,session,gate,srchannel){
       UserSessionCtor.call(this,user,session,gate);
       this.signalRchannel = srchannel;
+      this.srDestroyedListener = this.signalRchannel.destroyed.attach(this.destroy.bind(this));
     }
     lib.inherit(HttpUserSession,UserSessionCtor);
     HttpUserSession.prototype.__cleanUp = function(){
+      if (this.srDestroyedListener) {
+        this.srDestroyedListener.destroy();
+      }
+      this.srDestroyedListener = null;
+      /*
       if (this.signalRchannel) {
         this.signalRchannel.destroy();
       }
+      */
       this.signalRchannel = null;
       UserSessionCtor.prototype.__cleanUp.call(this);
     };
     HttpUserSession.prototype.send = function(data){
-      this.signalRchannel.invokeOnClient('_', data);
+      if (this.signalRchannel) {
+        this.signalRchannel.invokeOnClient('_', data);
+      }
+    };
+    HttpUserSession.prototype.terminate = function () {
+      var src = this.signalRchannel;
+      this.signalRchannel = null;
+      if (src) {
+        src.destroy();
+      }
     };
 
     function InProcUserSession(user,session,gate,inprocrequester){
