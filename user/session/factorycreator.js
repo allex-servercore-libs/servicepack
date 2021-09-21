@@ -29,9 +29,15 @@ function createFactoryCreator(lib){
 
     function SocketUserSession(user,session,gate,talker){
       UserSessionCtor.call(this,user,session,gate);
-      this.talker = talker;
-      this.talkerDestroyedListener = this.talker.destroyed.attach(this.onTalkerDead.bind(this));
-      //console.log('Server attached to Talker', this.talker.id, this.talker.destroyed.collection.length);
+      this.talker = null;
+      this.talkerDestroyedListener = null;
+      if (!(talker && talker.destroyed)) {
+        this.destroy();
+      } else {
+        this.talker = talker;
+        this.talkerDestroyedListener = this.talker.destroyed.attach(this.onTalkerDead.bind(this));
+        //console.log('Server attached to Talker', this.talker.id, this.talker.destroyed.collection.length);
+      }
     }
     lib.inherit(SocketUserSession,UserSessionCtor);
     SocketUserSession.prototype.__cleanUp = function(){

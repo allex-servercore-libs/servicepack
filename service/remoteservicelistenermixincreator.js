@@ -71,6 +71,15 @@ function createRemoteServiceListenerMixin(execlib, ServiceBase) {
       }
     });
   };
+  RemoteServiceListenerServiceMixin.prototype.findRemoteOnHotel = function (servicename, ipaddress, port, identity, servicenamealias) {
+    this.huntRemote('getIn', sn, {
+      ipaddress: ipaddress,
+      port: port,
+      identity: identity,
+      cb: this.onFindOnRemoteHotel.bind(this, servicename, ipaddress, port, identity, servicenamealias, sn),
+      propertyhash: {nochannels: true}
+    });
+  };
   RemoteServiceListenerServiceMixin.prototype.onFindRemoteWithAddress = function (servicename, identity, servicenamealias, nameofservice, taskobj) {
     var hunter;
     this.onRemoteHunted(nameofservice, taskobj.sink);
