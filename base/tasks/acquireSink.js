@@ -50,15 +50,16 @@ function createAcquireSinkTask(execlib){
     if(!this.onSink){
       return;
     }
-    this.log('AcquireSinkTask starting', this);
+    //console.log('AcquireSinkTask starting', lib.pick(this, ['identity', 'connectionString', 'singleshot']));
     registry.spawn(this.prophash,this.connectionString,this.identity,this.session).done(
       this.onSpawnSuccess.bind(this),
       this.onSpawnError.bind(this)
     );
   };
   AcquireSinkTask.prototype.onSpawnSuccess = function(sink){
-    if (!this.onSink) { //me ded
+    if (!lib.isFunction(this.onSink)) { //me ded
       sink.destroy();
+      this.destroy();
       return;
     }
     this.log(this.connectionString,'got a sink',sink.modulename,sink.role,'for',this.singleshot ? 'singleshot' : 'continuous monitoring');
@@ -67,18 +68,13 @@ function createAcquireSinkTask(execlib){
       return;
     }
     this.connected = true;
-    if('function' === typeof this.onSink){
-      if(this.singleshot){
-        this.log('AcquireSinkTask will die in next tick');
-        lib.runNext(this.destroy.bind(this));
-      }else{
-        this.sinkDestroyedListener = sink.destroyed.attach(this.onSinkDown.bind(this));
-      }
-      this.onSink(sink);
+    if(this.singleshot){
+      this.log('AcquireSinkTask will die in next tick');
+      lib.runNext(this.destroy.bind(this));
     }else{
-      sink.destroy();
-      this.destroy();
+      this.sinkDestroyedListener = sink.destroyed.attach(this.onSinkDown.bind(this));
     }
+    this.onSink(sink);
   };
   AcquireSinkTask.prototype.onSpawnError = function(reason){
     var wasconnected;
@@ -125,7 +121,6 @@ function createAcquireSinkTask(execlib){
     }
   };
   AcquireSinkTask.prototype.handleError = function(error){
-    console.log(this.connectionString, 'NO FUTURE',error);
     if(this.onCannotConnect){
       this.onCannotConnect(error);
     }else{

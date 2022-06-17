@@ -5,6 +5,7 @@ function createInvokerTask(execlib){
       execSuite = execlib.execSuite,
       SinkTask = execSuite.SinkTask,
       taskRegistry = execSuite.taskRegistry;
+
   function InvokerTask(prophash){
     SinkTask.call(this,prophash);
     this.sink = prophash.sink;
@@ -16,6 +17,9 @@ function createInvokerTask(execlib){
   };
   lib.inherit(InvokerTask,SinkTask);
   InvokerTask.prototype.__cleanUp = function(){
+    this.onNotify = null;
+    this.onError = null;
+    this.onSuccess = null;
     this.params = null;
     this.methodname = null;
     this.sink = null;
@@ -24,20 +28,37 @@ function createInvokerTask(execlib){
   InvokerTask.prototype.go = function(){
     this.sink[this.sinkMethodName].apply(this.sink,[this.methodname].concat(this.params)).done(
       this.onCallSucceeded.bind(this),
-      this.onError,
+      this.onCallFailed.bind(this),
       this.onNotify
     );
   };
   InvokerTask.prototype.onCallSucceeded = function(result){
+    this.onError = null;
+    var onsuc = this.onSuccess;
+    this.onSuccess = null;
     if(this.next){
-      this.next.propertyhash.sink = this.sink,
-      this.onSuccess(result,this.next.propertyhash);
+      this.next.propertyhash.sink = this.sink;
+      if (lib.isFunction(onsuc)) {
+        onsuc(result,this.next.propertyhash);
+      }
       taskRegistry.run(this.next.name,this.next.propertyhash);
-    }else{
-      this.onSuccess(result);
+      this.destroy();
+      return;
     }
+    if (lib.isFunction(onsuc)) {
+      onsuc(result);
+    }
+    this.destroy();
   };
-  InvokerTask.prototype.compulsoryConstructionProperties = ['sink','methodname'];
+  InvokerTask.prototype.onCallFailed = function (reason) {
+    var oner = this.onError;
+    this.onError = null;
+    if (lib.isFunction(oner)) {
+      oner(reason);
+    }
+    this.destroy();
+  };
+  InvokerTask.prototype.compulsoryConstructionProperties = ['sink','methodname','onError'];
 
   return InvokerTask;
 }
