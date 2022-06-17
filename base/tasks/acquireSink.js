@@ -50,7 +50,7 @@ function createAcquireSinkTask(execlib){
     if(!this.onSink){
       return;
     }
-    //console.log('AcquireSinkTask starting', lib.pick(this, ['identity', 'connectionString', 'singleshot']));
+    this.log('AcquireSinkTask starting', lib.pick(this, ['identity', 'connectionString', 'singleshot']));
     registry.spawn(this.prophash,this.connectionString,this.identity,this.session).done(
       this.onSpawnSuccess.bind(this),
       this.onSpawnError.bind(this)
@@ -121,6 +121,7 @@ function createAcquireSinkTask(execlib){
     }
   };
   AcquireSinkTask.prototype.handleError = function(error){
+    console.log(this.connectionString, 'NO FUTURE',error);
     if(this.onCannotConnect){
       this.onCannotConnect(error);
     }else{
