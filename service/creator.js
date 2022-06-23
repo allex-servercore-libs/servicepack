@@ -204,7 +204,7 @@ function createService(execlib){
     if (!this.checkForUsername(userhash)) {
       return null;
     }
-    username = userhash.name;
+    username = userhash.name+'';
     user = this.users.get(username);
     if(user){
       if (!this.checkForRoleMismatch(userhash, user)) {
