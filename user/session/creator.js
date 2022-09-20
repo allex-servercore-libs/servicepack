@@ -1,7 +1,17 @@
 function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
   'use strict';
   var q = lib.q,
+    qlib = lib.qlib,
+    jobcores = require('./jobcores') (lib, SessionIntroductor),
     Session2RemoteSink;
+
+  function isloggable (sess) {
+    return sess && sess.user && sess.user.__service && sess.user.__service.constructor.name.indexOf('Remote')== 0;
+  }
+  function maybelog(sess) {
+    if (!isloggable(sess)) return;
+    console.log.apply(console, Array.prototype.slice.call(arguments, 1).concat([sess.session, sess.user.role, sess.user.modulename, sess.user.state.get('name')]));
+  }
 
   function OOBChannel(usersession,name){
     lib.Destroyable.call(this);
@@ -55,6 +65,13 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
       console.log('UserSession dying on', this.user.get('name'), this.user.modulename);
     }
     */
+    this.reportToGate('destroyed');
+    if (this.session) {
+      SessionIntroductor.forget(this.session);
+    }
+    if (this.user) {
+      this.user.onSessionDown(this);
+    }
     this.oobMessage = null;
     lib.containerDestroyAll(this.channels);
     this.channels.destroy();
@@ -68,11 +85,13 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
   };
   UserSession.prototype.dyingCondition = function(){
     if (!this.deathReported) {
+      this.reportToGate('destroy_1');
       this.deathReported = true;
       this.sendOOB('-',true);
       lib.runNext(this.destroy.bind(this));
       return false;
     }
+    this.reportToGate('destroy_2');
     return true;
   };
   UserSession.prototype.addChannel = function(channelctor){
@@ -118,14 +137,18 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
     this.send(data);
   };
   UserSession.prototype.onResult = function(id,result){
+    this.reportToGate('resolved', {id: id, value: result});
     this.send(['r', id, result]);
   };
   UserSession.prototype.onError = function(id,reason){
+    var eobj = {code: reason.code, message: reason.message};
     //console.log(process.pid+'', 'sending error', reason);
     //this.send(['e', id, reason]);
-    this.send(['e', id, {code: reason.code, message: reason.message}]);
+    this.reportToGate('rejected', {id: id, value: eobj});
+    this.send(['e', id, eobj]);
   };
   UserSession.prototype.onProgress = function(id,progress){
+    this.reportToGate('progress', {id: id, value: progress});
     this.send(['n', id, progress]);
   };
   UserSession.prototype.handleCallableSpec = function(cs){
@@ -166,11 +189,13 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
   UserSession.prototype.handleProcess = function(processunit){
     //console.log('exec-ing',processunit.exec);
     var id = processunit[0];
+    this.reportToGate('exec', processunit[2]);
     this.handleCallableSpec(processunit[2]).then(
       this.onResult.bind(this,id),
       this.onError.bind(this,id),
       this.onProgress.bind(this,id)
     );
+    id = null;
   };
   UserSession.prototype.handleIncomingUnit = function(incomingunit){
     if ( !(this.user && this.user.__service) ) {
@@ -203,71 +228,6 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
       this.gate.sessions.remove(this.session);
     }
   };
-  UserSession.prototype.onSubConnected = function(issubsink,defer,userspec,subservicename,userrepresentation){
-    var sess;
-    if (!this.gate) {
-      defer.reject(new lib.Error('ALREADY_DESTROYED', 'why did you call me if i\'m gonna die ...'));
-      issubsink = null;
-      defer = null;
-      userspec = null;
-      subservicename = null;
-      userrepresentation = null;
-      return;
-    }
-    if (!userrepresentation) {
-      defer.resolve(null);
-      issubsink = null;
-      defer = null;
-      userspec = null;
-      subservicename = null;
-      return;
-    }
-    if (userspec.__service) {
-      if(issubsink){
-        //console.log('SubSink up', sess);
-        if (!userrepresentation.destroyed) {
-          defer.resolve(null);
-          issubsink = null;
-          defer = null;
-          userspec = null;
-          subservicename = null;
-          return;
-        }
-        userrepresentation.destroy();
-      }//else leave the user to its own UserSessions that will destroy him
-      sess = SessionIntroductor.introduce(userspec);
-      defer.resolve({
-        introduce:{
-          session:sess,
-          modulename:userrepresentation.modulename,
-          role:userrepresentation.role
-        }
-      });
-    } else {
-      try {
-      if(!Session2RemoteSink) {
-        //late require needed because of UserSession that need to be formed completely
-        Session2RemoteSink = require('./session2remotesinkcreator')(lib, q, UserSession, Callable);
-      }
-      sess = lib.uid();
-      this.gate.sessions.add(sess, new Session2RemoteSink(this,sess,userrepresentation));
-      defer.resolve({
-        introduce:{
-          session:sess,
-          modulename:userrepresentation.modulename,
-          role:userrepresentation.role
-        }
-      });
-      } catch (e) {
-      console.error(e.stack);
-      console.error(e);
-      }
-    }
-    issubsink = null;
-    defer = null;
-    userspec = null;
-    subservicename = null;
-  };
   UserSession.prototype.canSubConnect = function () {
     return (!this.__dying && this.user && this.user.__service && this.user.__service.state && !this.user.__service.state.get('closed'))
   };
@@ -280,65 +240,40 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
     this.onSubConnected(false,defer,userspec,subservicename,introduceduser);
   };
   UserSession.prototype.subConnect = function(subservicename, userspec ,defer){
-    //console.log(process.pid, 'UserSession', this.id, 'subConnect', subservicename);
-    if(!this.canSubConnect()){
-      console.trace();
-      console.log('SERVICE_GOING_DOWN',this);
-      defer.reject(new lib.Error('SERVICE_GOING_DOWN'));
-      return;
-    }
-    var introduceduser;
-    userspec = userspec || {};
-    if(!('role' in userspec)){
-      userspec.role = this.user.role;
-    }
-    if(!('name' in userspec)){
-      userspec.name = this.user.get('name');
-    }
-    if(subservicename==='.'){
-      //userspec.__service = this.user.__service;
-      introduceduser = this.user.__service.introduceUser(userspec);
-      if (q.isPromise(introduceduser)) {
-        introduceduser.then(this.onSubConnectedToSelf.bind(this, subservicename, userspec, defer));
-      } else {
-        this.onSubConnectedToSelf(subservicename, userspec, defer, introduceduser);
-      }
-      //console.log(process.pid, this.user.__service.modulename, 'Standard subConnect to self', introduceduser ? introduceduser.modulename : 'no_modulename?');
-    }else{
-      var sink = this.user.__service.subservices.get(subservicename);
-      if(sink){
-        if(lib.isFunction(sink.introduceUser)){ //service-role sink
-          sink.introduceUser(this.user.__service.preProcessSubconnectIdentity(subservicename, userspec)).done(
-            this.onSubConnected.bind(this,true,defer,userspec,subservicename),
-            defer.reject.bind(defer)
-          );
-        } else {
-          //console.log(process.pid, 'Session2RemoteSink', subservicename, sink.modulename, 'connecting to self');
-          if (sink instanceof lib.Fifo) {
-            var d = q.defer();
-            d.promise.done(
-              this.subConnect.bind(this, subservicename, userspec, defer),
-              defer.reject.bind(defer)
-            );
-            sink.push(d);
-          } else {
-            sink.subConnect('.',this.user.__service.preProcessSubconnectIdentity(subservicename, userspec),{nochannels:true}).done(
-              this.onSubConnected.bind(this,true,defer,userspec,subservicename),
-              defer.reject.bind(defer)
-            );
-          }
-        }
-      }else{
-        //console.log(process.pid, this.user.__service.modulename, 'has no', subservicename);
-        //this.user.__service.subservices.dumpToConsole();
-        defer.reject(new lib.Error('NO_SUBSERVICE', 'No subservice registered by name '+subservicename));
-      }
-    }
+    return qlib.newSteppedJobOnSteppedInstance(
+      new jobcores.SubConnect(this, subservicename, userspec),
+      defer
+    ).go();
   };
   UserSession.prototype.confirmReservation = function(defer){
     //console.log(this.session,this.user.role,this.user.modulename,'confirmReservation');
+    SessionIntroductor.forget(this.session);
     defer.resolve('ok');
   };
+
+  UserSession.prototype.reportToGate = function (type, args) {
+    if (!this.gate) {
+      return;
+    }
+    this.gate.handleSessionEvent(args
+      ?
+      {
+      type: type,
+      session: this,
+      args: args
+      }
+      :
+      {
+        type: type,
+        session: this
+        }
+    );
+  };
+  UserSession.prototype.readyToGo = function () {
+    this.reportToGate('created');
+  };
+
+
   UserSession.prototype.__methodDescriptors = {
     subConnect: [{
       title: 'SubService name',

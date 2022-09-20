@@ -1,6 +1,10 @@
 function createUserSuite(lib, UserEntity, UserSession, Collection){
   'use strict';
-  var q = lib.q, qlib=lib.qlib, _uid = 0, sessionAcceptorFactory = require('./sessionacceptance')(lib);
+  var q = lib.q,
+    qlib=lib.qlib,
+    jobcores = require('./jobcores')(lib),
+    sessionAcceptorFactory = require('./sessionacceptance')(lib);
+
   function setProp(u,prophash,propname){
     u.set(propname,prophash[propname]);
   }
@@ -77,36 +81,21 @@ function createUserSuite(lib, UserEntity, UserSession, Collection){
   User.prototype.set = function(name,val){
     return this.state.set(name,val);
   };
-  User.prototype.get = function(name,val){
-    return this.state.get(name);
+  User.prototype.get = function(name){
+    return this.state ? this.state.get(name) : null;
   };
   User.prototype.remove = function(name){
     return this.state.remove(name);
   };
   User.prototype.createSession = function(gate,session,arg1){
-    var ctor, ret;
-    if (!this.state) {
-      return;
-    }
-    if (!this.aboutToDie) {
-      return;
-    }
-    ctor = this.getSessionCtor(gate.communicationType);
-    if (ctor) {
-      ret = this.sessionAcceptor.resolveNewSession(new ctor(this,session,gate,arg1));
-      if(ret) {
-        qlib.thenAny(ret, this.attachSession.bind(this));
-      } else {
-        console.error('no resolved session', ret);
-        ret = null;
-      }
-    }
-    return ret;
+    return qlib.newSteppedJobOnSteppedInstance(
+      new jobcores.CreateSession(this, gate, session, arg1)
+    ).go();
   };
   User.prototype.onSessionDown = function(sessitem){
     //console.log(this.get('name'), this.__service.modulename, 'removing session', sessitem.content.session);
     //console.log('before remove', this.sessions.length);
-    this.sessions.remove(sessitem);
+    var sess = this.sessions.remove(sessitem);
     //console.log('after remove', this.sessions.length);
     //console.log(this.sessions.length, 'sessions left');
     if(this.sessions.length<1){
@@ -123,7 +112,7 @@ function createUserSuite(lib, UserEntity, UserSession, Collection){
     this.destroy();
   };
   User.prototype.attachSession = function(session){
-    var c, sessitem;
+    var c;
     if (!(session && session.aboutToDie)) {
       return;
     }
@@ -139,8 +128,7 @@ function createUserSuite(lib, UserEntity, UserSession, Collection){
       session.destroy();
       return;
     }
-    sessitem = this.sessions.push(session);
-    session.destroyed.attachForSingleShot(this.onSessionDown.bind(this,sessitem));
+    this.sessions.push(session);
     c = session.channels.get('s');
     //console.log(this.get('name'),'got',this.sessionCount,'sessions');
     var f = this.__service.roleFilters.get(this.role);

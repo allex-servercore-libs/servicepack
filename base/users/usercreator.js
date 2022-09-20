@@ -25,7 +25,6 @@ function createUser(execlib,ParentUser){
     }
     this.fingerprintReceived = null;
     this.otherSideAuthenticated = null;
-    this.authenticated = null;
     this.connection = null;
     this.server = null;
     this.userserver = null;

@@ -160,7 +160,7 @@ function ipStrategyCreator(lib){
       defer.resolve(credentials);
     }else{
       console.log('nok');
-      defer.reject(credentials.ip);
+      defer.reject(new lib.Error('FORBIDDEN_IP', credentials.ip));
     }
   };
   IPStrategy.prototype.toArrayOfHashes = function(){

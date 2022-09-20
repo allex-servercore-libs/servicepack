@@ -86,16 +86,20 @@ function createServiceSink(execlib){
     this.destroy(exception);
   };
   ServiceSink.prototype.subConnect = function(subservicename,identity,prophash){
-    var d = lib.q.defer();
+    var d = lib.q.defer(), ret = d.promise;
     if (!this.clientuser) {
       d.reject(new lib.Error('ALREADY_DEAD', 'No point in subConnect-ing to a dead Sink'));
-      return d.promise;
+      return ret;
     }
     this.clientuser.subConnect(subservicename,identity,this.ClientUser).done(
       this.onSubConnectDone.bind(this,d,prophash),
       d.reject.bind(d)
     );
-    return d.promise;
+    d = null;
+    subservicename = null;
+    identity = null;
+    prophash = null;
+    return ret;
   };
   ServiceSink.prototype.onSubConnectDone = function(d,prophash,clientpack){
     if(clientpack){

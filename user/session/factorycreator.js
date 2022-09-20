@@ -27,6 +27,22 @@ function createFactoryCreator(lib){
       process.exit(1);
     };
 
+    function InProcUserSession(user,session,gate,inprocrequester){
+      UserSessionCtor.call(this,user,session,gate);
+      this.requester = inprocrequester;
+    }
+    lib.inherit(InProcUserSession,UserSessionCtor);
+    InProcUserSession.prototype.__cleanUp = function(){
+      this.requester = null;
+      UserSessionCtor.prototype.__cleanUp.call(this);
+    };
+    InProcUserSession.prototype.send = function(data){
+      if(!this.requester){
+        return;
+      }
+      this.requester.onIncoming(data);
+    };
+
     function SocketUserSession(user,session,gate,talker){
       UserSessionCtor.call(this,user,session,gate);
       this.talker = null;
@@ -119,7 +135,12 @@ function createFactoryCreator(lib){
     function HttpUserSession(user,session,gate,srchannel){
       UserSessionCtor.call(this,user,session,gate);
       this.signalRchannel = srchannel;
-      this.srDestroyedListener = this.signalRchannel.destroyed.attach(this.destroy.bind(this));
+      this.srDestroyedListener = null;
+      if (this.signalRchannel && this.signalRchannel.destroyed) {
+        this.srDestroyedListener = this.signalRchannel.destroyed.attach(this.destroy.bind(this));
+      } else {
+        this.destroy();
+      }
     }
     lib.inherit(HttpUserSession,UserSessionCtor);
     HttpUserSession.prototype.__cleanUp = function(){
@@ -127,12 +148,7 @@ function createFactoryCreator(lib){
         this.srDestroyedListener.destroy();
       }
       this.srDestroyedListener = null;
-      /*
-      if (this.signalRchannel) {
-        this.signalRchannel.destroy();
-      }
-      */
-      this.signalRchannel = null;
+      this.signalRchannel = null; //don't destroy it, let it be destroyed only because of socket close
       UserSessionCtor.prototype.__cleanUp.call(this);
     };
     HttpUserSession.prototype.send = function(data){
@@ -148,21 +164,6 @@ function createFactoryCreator(lib){
       }
     };
 
-    function InProcUserSession(user,session,gate,inprocrequester){
-      UserSessionCtor.call(this,user,session,gate);
-      this.requester = inprocrequester;
-    }
-    lib.inherit(InProcUserSession,UserSessionCtor);
-    InProcUserSession.prototype.__cleanUp = function(){
-      this.requester = null;
-      UserSessionCtor.prototype.__cleanUp.call(this);
-    };
-    InProcUserSession.prototype.send = function(data){
-      if(!this.requester){
-        return;
-      }
-      this.requester.onIncoming(data);
-    };
     return function getSessionCtor(communicationtype){
       switch(communicationtype){
         case '.':

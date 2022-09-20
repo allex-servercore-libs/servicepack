@@ -7,6 +7,10 @@ function createAcquireSinkTask(execlib){
       Task = execSuite.Task,
       ResolvableTaskError = execSuite.ResolvableTaskError;
 
+  var _itsallover = false;
+
+  lib.shouldClose.attachForSingleShot(function () {_itsallover = true;})
+
   function ResolvableBadAddressError(){
     var ret = ResolvableTaskError.call(this);
     return ret;
@@ -109,6 +113,9 @@ function createAcquireSinkTask(execlib){
         break;
     }
     */
+    if (_itsallover) {
+      return;
+    }
     lib.runNext(this.go.bind(this),1000);
   };
   AcquireSinkTask.prototype.onSinkDown = function(reason){
