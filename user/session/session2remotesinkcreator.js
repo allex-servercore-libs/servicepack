@@ -18,8 +18,13 @@ function createSession2RemoteSink(lib, q, UserSession, Callable) {
     this.creatingSessionDestroyedListener = creatingusersession.destroyed.attach(this.destroy.bind(this));
     remotesink.consumeOOB(this);
     this.__methodDescriptors = creatingusersession.__methodDescriptors;
+    if (this.creatingusersession.gate && this.creatingusersession.gate.sessions) {
+      this.creatingusersession.gate.sessions.add(this.session, this);
+    }
   }
+  console.log('before inherit', Object.keys(UserSession.prototype));
   lib.inherit(Session2RemoteSink, UserSession); //just the methods, with all the risk
+  console.log('after inherit', Object.keys(Session2RemoteSink.prototype));
   Session2RemoteSink.prototype.destroy = function () {
     this.log('dying');
     if (this.creatingSessionDestroyedListener) {
@@ -32,7 +37,7 @@ function createSession2RemoteSink(lib, q, UserSession, Callable) {
     this.remoteSinkDestroyedListener = null;
     if (this.creatingusersession){
       this.send(['oob', [this.session, '-', true]]);
-      if (this.creatingusersession.gate) {
+      if (this.creatingusersession.gate && this.creatingusersession.gate.sessions) {
         this.creatingusersession.gate.sessions.remove(this.session);
       }
     }
@@ -143,8 +148,7 @@ function createSession2RemoteSink(lib, q, UserSession, Callable) {
   };
 
   Session2RemoteSink.prototype.log = function () {
-    return;
-    /*
+    /**/
     var args = Array.prototype.slice.call(arguments, 0);
     if (this.creatingusersession) {
       if (this.creatingusersession.user && this.creatingusersession.user.state) {
@@ -157,7 +161,7 @@ function createSession2RemoteSink(lib, q, UserSession, Callable) {
       args.unshift('no creatingsession');
     }
     console.log.apply(console, args);
-    */
+    /**/
   };
 
   return Session2RemoteSink;

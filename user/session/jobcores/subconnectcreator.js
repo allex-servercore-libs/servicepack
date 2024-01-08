@@ -1,9 +1,10 @@
-function createSubConnectJobCore (lib, SessionIntroductor, mylib) {
+function createSubConnectJobCore (lib, SessionIntroductor, Callable, mylib) {
   'use strict';
 
   var q = lib.q,
     qlib = lib.qlib;
   var OnSessionJobCore = mylib.OnSession;
+  var Session2RemoteSink;
 
   function SubConnectBaseJobCore (session) {
     OnSessionJobCore.call(this, session);
@@ -78,7 +79,7 @@ function createSubConnectJobCore (lib, SessionIntroductor, mylib) {
     if (lib.isFunction(this.mastersink.introduceUser)) {
       return this.mastersink.introduceUser(this.session.user.__service.preProcessSubconnectIdentity(this.subservicename, this.userspec));
     }
-    return this.mastersink.subConnect('.', this.user.__service.preProcessSubconnectIdentity(subservicename, userspec),{nochannels:true});
+    return this.mastersink.subConnect('.', this.session.user.__service.preProcessSubconnectIdentity(this.subservicename, this.userspec),{nochannels:true});
   };
   IntroduceUserToSubService.prototype.onSlaveSink = function (intusr) {
     return {
@@ -122,11 +123,11 @@ function createSubConnectJobCore (lib, SessionIntroductor, mylib) {
       ?
       new IntroduceUserToSelf(this.session, this.userspec)
       :
-      new IntroduceUserToSubService(this.session, this.subservicename, this. userspec)
+      new IntroduceUserToSubService(this.session, this.subservicename, this.userspec)
     ).go();
   };
-  SubConnectBaseJobCore.prototype.onIntroducedUser = function (intusrobj) {
-    var dodestroy, intusr
+  SubConnectJobCore.prototype.onIntroducedUser = function (intusrobj) {
+    var dodestroy, intusr, ret;
     if (!intusrobj) {
       throw new lib.Error('INTRODUCEUSER_INVALID_RESULT', 'Result of introduce user cannot be null');
     }
@@ -138,19 +139,27 @@ function createSubConnectJobCore (lib, SessionIntroductor, mylib) {
     if (!intusr.destroyed) { //too late
       return null;
     }
+    ret = {
+      introduce:{
+        session:SessionIntroductor.introduce(this.userspec),
+        modulename:intusr.modulename,
+        role:intusr.role
+      }
+    };
     if (this.userspec.__service) {
       if (dodestroy) {
         intusr.destroy();
       }
-      return {
-        introduce:{
-          session:SessionIntroductor.introduce(this.userspec),
-          modulename:intusr.modulename,
-          role:intusr.role
-        }
-      }
+      return ret;
     }
-    throw new lib.Error('REMOTESINKSUBCONNECT_NOT_YET_IMPLEMENTED');
+    if (!Session2RemoteSink) {
+      Session2RemoteSink = require('../session2remotesinkcreator')(lib, q, this.session.constructor, Callable);
+    }
+    if (this.session.gate && this.session.gate.sessions) {
+      new Session2RemoteSink(this.session, ret.introduce.session, intusr);
+    }
+    return ret;
+    //throw new lib.Error('REMOTESINKSUBCONNECT_NOT_YET_IMPLEMENTED');
   };
 
   SubConnectJobCore.prototype.steps = [

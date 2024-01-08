@@ -95,6 +95,9 @@ function createRemoteServiceListenerMixin(execlib, ServiceBase) {
     }
   };
   RemoteServiceListenerServiceMixin.prototype.onRemoteHunted = function (nameofservice, sink) {
+    if (!this.state) {
+      return;
+    }
     if (sink) {
       this.state.set(nameofservice, sink);
     } else {

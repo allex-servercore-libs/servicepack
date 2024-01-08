@@ -2,8 +2,7 @@ function createUserSession(lib,UserEntity,SessionIntroductor,Callable){
   'use strict';
   var q = lib.q,
     qlib = lib.qlib,
-    jobcores = require('./jobcores') (lib, SessionIntroductor),
-    Session2RemoteSink;
+    jobcores = require('./jobcores') (lib, SessionIntroductor, Callable);
 
   function isloggable (sess) {
     return sess && sess.user && sess.user.__service && sess.user.__service.constructor.name.indexOf('Remote')== 0;
